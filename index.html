@@ -1,10 +1,46 @@
-
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>正字計票板</title>
+
+  <!-- ════════════════════════════════════════════════════
+       ★  Firebase 設定區  ★
+       請將下方 firebaseConfig 換成你的 Firebase 專案設定
+       步驟詳見：董監事計票系統/Firebase設定教學.md
+  ════════════════════════════════════════════════════ -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { getDatabase, ref, set, onValue, get }
+      from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey:            "AIzaSyDH1DWhteUK40qJoEwM_2qz8YHg4w4CQak",
+      authDomain:        "tally-vote-system.firebaseapp.com",
+      databaseURL:       "https://tally-vote-system-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId:         "tally-vote-system",
+      storageBucket:     "tally-vote-system.firebasestorage.app",
+      messagingSenderId: "997616231956",
+      appId:             "1:997616231956:web:71b95eaa83d4104ad0e901"
+    };
+
+    let app, db, dbRef;
+    let firebaseReady = false;
+
+    try {
+      app   = initializeApp(firebaseConfig);
+      db    = getDatabase(app);
+      dbRef = ref(db, 'election');
+      firebaseReady = true;
+    } catch(e) {
+      console.warn('Firebase 初始化失敗，將使用本機模式', e);
+    }
+
+    // 掛到 window，讓下方主程式可以呼叫
+    window._firebase = { db, dbRef, set, onValue, get, ready: firebaseReady };
+  </script>
+
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -18,8 +54,27 @@
       padding: 12px 20px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
     }
     .topbar h1 { font-size: 17px; font-weight: 500; flex: 1; min-width: 120px; }
-    .save-badge { font-size: 11px; color: #888; background: #f0ede8; padding: 3px 9px; border-radius: 20px; white-space: nowrap; }
-    .save-badge.saved { color: #2a7a4b; background: #e6f4ec; }
+
+    /* 儲存狀態 */
+    .save-badge {
+      font-size: 11px; color: #888; background: #f0ede8;
+      padding: 3px 9px; border-radius: 20px; white-space: nowrap;
+    }
+    .save-badge.saved  { color: #2a7a4b; background: #e6f4ec; }
+    .save-badge.syncing { color: #1d4ed8; background: #eff6ff; }
+    .save-badge.error  { color: #b91c1c; background: #fef2f2; }
+
+    /* 同步狀態點 */
+    .sync-dot {
+      width: 8px; height: 8px; border-radius: 50%; display: inline-block;
+      margin-right: 4px; vertical-align: middle;
+    }
+    .sync-dot.online  { background: #22c55e; box-shadow: 0 0 0 2px #bbf7d0; }
+    .sync-dot.offline { background: #9ca3af; }
+    .sync-dot.syncing { background: #3b82f6; animation: pulse 1s infinite; }
+    .sync-dot.error   { background: #ef4444; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
     .topbar-btn {
       font-size: 12px; padding: 6px 13px; border-radius: 7px;
       border: 1px solid #ccc; background: #fff; color: #444; cursor: pointer;
@@ -53,7 +108,7 @@
 
     /* ── 分輪標籤 ── */
     .main { padding: 14px 20px; }
-    .tab-bar { display: flex; gap: 5px; margin-bottom: 12px; flex-wrap: wrap; align-items: center; }
+    .tab-bar { display: flex; gap: 5px; margin-bottom: 8px; flex-wrap: wrap; align-items: center; }
     .tab {
       font-size: 13px; padding: 5px 14px; border-radius: 7px;
       border: 1px solid #ccc; background: #fff; color: #666; cursor: pointer;
@@ -66,15 +121,30 @@
     }
     .btn-add-round:hover { color: #CC2200; border-color: #CC2200; }
 
+    /* ── 出線名單列 ── */
+    .results-bar {
+      display: flex; align-items: flex-start; gap: 10px; padding: 8px 12px;
+      background: #fff; border: 1px solid #e5e7eb; border-radius: 10px;
+      margin-bottom: 10px; flex-wrap: wrap;
+    }
+    .results-bar-title { font-size: 12px; font-weight: 600; color: #374151; white-space: nowrap; padding-top: 2px; }
+    .results-tags { display: flex; flex-wrap: wrap; gap: 5px; flex: 1; }
+    .rtag {
+      display: inline-flex; align-items: center; gap: 4px;
+      font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 50px;
+    }
+    .rtag.r1 { background: #fef3c7; border: 1.5px solid #f59e0b; color: #92400e; }
+    .rtag.r2 { background: #f1f5f9; border: 1.5px solid #94a3b8; color: #334155; }
+    .rtag.r3 { background: #fff7ed; border: 1.5px solid #fb923c; color: #7c2d12; }
+    .rtag.rd { background: #f0fdf4; border: 1.5px solid #4ade80; color: #166534; }
+    .rtag.rs { background: #f5f3ff; border: 1.5px solid #a78bfa; color: #4c1d95; }
+    .rtag-votes { font-size: 10px; opacity: 0.7; }
+    .no-results { font-size: 12px; color: #aaa; padding-top: 2px; }
+
     /* ── 分段 ── */
     .board-section { margin-bottom: 14px; }
-    .section-label {
-      font-size: 11px; color: #999; font-weight: 500; letter-spacing: 0.5px;
-      margin-bottom: 5px; padding-left: 2px;
-    }
+    .section-label { font-size: 11px; color: #999; font-weight: 500; letter-spacing: 0.5px; margin-bottom: 5px; padding-left: 2px; }
     .columns-scroll { overflow-x: auto; border-radius: 10px; }
-
-    /* ── 計票主體 ── */
     .columns-wrap {
       display: inline-flex; gap: 1px;
       background: #ccc; border: 1px solid #ccc;
@@ -86,15 +156,35 @@
     }
 
     /* ── 候選人欄 ── */
-    .col { background: #fff; width: 88px; flex-shrink: 0; display: flex; flex-direction: column; }
-
+    .col { background: #fff; width: 88px; flex-shrink: 0; display: flex; flex-direction: column; position: relative; }
     .col-head {
       padding: 6px 5px 5px; background: #f0ede8;
       border-bottom: 1px solid #ddd; position: relative;
       display: flex; flex-direction: column; align-items: center; gap: 2px;
-      min-height: 58px;
+      min-height: 58px; transition: background 0.2s;
     }
-    /* 刪除按鈕 */
+    .col-head.rank-1 { background: #fef3c7; border-bottom: 2px solid #f59e0b; }
+    .col-head.rank-2 { background: #f1f5f9; border-bottom: 2px solid #94a3b8; }
+    .col-head.rank-3 { background: #fff7ed; border-bottom: 2px solid #fb923c; }
+    .col-head.rank-d { background: #f0fdf4; border-bottom: 2px solid #4ade80; }
+    .col-head.rank-s { background: #f5f3ff; border-bottom: 2px solid #a78bfa; }
+    .rank-badge {
+      position: absolute; top: 2px; left: 3px;
+      font-size: 10px; font-weight: 700; line-height: 1;
+      padding: 1px 4px; border-radius: 4px; color: #fff;
+    }
+    .rank-badge.r1 { background: #f59e0b; }
+    .rank-badge.r2 { background: #94a3b8; }
+    .rank-badge.r3 { background: #fb923c; }
+    .rank-badge.rd { background: #22c55e; }
+    .rank-badge.rs { background: #7c3aed; }
+    .elected-mark {
+      position: absolute; bottom: 2px; right: 2px;
+      font-size: 9px; font-weight: 700; padding: 1px 4px; border-radius: 4px;
+    }
+    .elected-mark.dir { background: #dcfce7; color: #166534; }
+    .elected-mark.sup { background: #ede9fe; color: #4c1d95; }
+
     .btn-del-col {
       position: absolute; top: 3px; right: 3px;
       width: 16px; height: 16px; border-radius: 4px;
@@ -103,21 +193,18 @@
       display: flex; align-items: center; justify-content: center; padding: 0;
     }
     .col-head:hover .btn-del-col { color: #CC2200; background: #ffe8e3; }
-    .btn-del-col:hover { color: #CC2200 !important; }
 
-    /* 姓名（可點擊編輯） */
     .col-name {
       font-size: 12px; font-weight: 500; text-align: center;
       word-break: break-all; line-height: 1.4; color: #1a1a1a;
-      cursor: pointer; padding: 1px 16px 1px 4px;
+      cursor: pointer; padding: 1px 16px 1px 18px;
       border-bottom: 1px dashed transparent; width: 100%;
     }
     .col-name:hover { border-bottom-color: #CC2200; color: #CC2200; }
     .col-name-input {
       font-size: 12px; font-weight: 500; text-align: center; width: 100%;
       border: none; border-bottom: 1.5px solid #CC2200;
-      background: transparent; outline: none; font-family: inherit; color: #1a1a1a;
-      padding: 0 4px;
+      background: transparent; outline: none; font-family: inherit; color: #1a1a1a; padding: 0 4px;
     }
     .col-total { font-size: 20px; font-weight: 700; color: #CC2200; line-height: 1; }
     .col-total-unit { font-size: 10px; color: #bbb; font-weight: 400; }
@@ -132,7 +219,6 @@
     .col-body:active { background: #f5ecec; }
     .empty-hint { font-size: 10px; color: #ccc; margin-top: 8px; text-align: center; line-height: 1.5; }
 
-    /* ── 按鈕列 ── */
     .col-footer { padding: 5px 4px; border-top: 1px solid #eee; display: flex; gap: 3px; }
     .btn-add-vote {
       flex: 1; font-size: 12px; font-weight: 600; padding: 6px 0;
@@ -147,7 +233,6 @@
     .btn-sub-vote:hover { background: #c56c14; }
     .btn-sub-vote:active { transform: scale(0.96); }
 
-    /* ── 摘要 ── */
     .summary-bar {
       margin-top: 10px; padding: 8px 14px;
       background: #fff; border: 1px solid #e0ddd8; border-radius: 8px;
@@ -155,8 +240,31 @@
     }
     .summary-bar strong { color: #1a1a1a; }
 
+    /* ── Modal ── */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.4); z-index: 1000;
+      align-items: center; justify-content: center;
+    }
+    .modal-overlay.show { display: flex; }
+    .modal {
+      background: #fff; border-radius: 14px; padding: 24px 28px;
+      width: 320px; max-width: 90vw; box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+    }
+    .modal h2 { font-size: 16px; margin-bottom: 16px; }
+    .modal label { font-size: 13px; color: #555; display: block; margin-bottom: 4px; }
+    .modal-row { margin-bottom: 14px; }
+    .modal select, .modal input[type=number] {
+      width: 100%; padding: 8px 10px; border: 1px solid #ccc; border-radius: 8px;
+      font-size: 14px; font-family: inherit; outline: none;
+    }
+    .modal-btns { display: flex; gap: 8px; justify-content: flex-end; margin-top: 8px; }
+    .modal-btn-cancel { padding: 8px 16px; border-radius: 8px; border: 1px solid #ccc; background: #fff; color: #666; cursor: pointer; font-size: 13px; }
+    .modal-btn-ok { padding: 8px 16px; border-radius: 8px; border: none; background: #CC2200; color: #fff; cursor: pointer; font-size: 13px; font-weight: 600; }
+
     @media print {
-      .topbar, .add-row, .col-footer, .btn-add-round, .btn-del-col, .summary-bar { display: none; }
+      .topbar, .add-row, .col-footer, .btn-add-round, .btn-del-col,
+      .summary-bar, .results-bar, .modal-overlay { display: none; }
       .col-name { border-bottom: none !important; cursor: default; }
     }
   </style>
@@ -166,8 +274,11 @@
 <!-- 頂部工具列 -->
 <div class="topbar">
   <h1>正字計票板</h1>
-  <span class="save-badge" id="saveBadge">尚未儲存</span>
-  <button class="topbar-btn" onclick="newRound()">＋ 新一輪</button>
+  <span class="save-badge" id="saveBadge">
+    <span class="sync-dot offline" id="syncDot"></span>
+    <span id="syncText">初始化中…</span>
+  </span>
+  <button class="topbar-btn" onclick="openNewRoundModal()">＋ 新一輪</button>
   <button class="topbar-btn" onclick="resetRound()">↺ 清空此輪</button>
   <button class="topbar-btn" onclick="window.print()">🖨 列印</button>
   <button class="topbar-btn danger" onclick="clearAllData()">清除所有資料</button>
@@ -189,72 +300,241 @@
 <!-- 主內容 -->
 <div class="main">
   <div class="tab-bar" id="tabBar"></div>
+  <div class="results-bar" id="resultsBar">
+    <span class="results-bar-title" id="resultBarTitle">🏆 出線名單</span>
+    <div class="results-tags" id="resultsTags">
+      <span class="no-results">尚無票數</span>
+    </div>
+  </div>
   <div id="boardWrap"></div>
   <div class="summary-bar" id="summaryBar" style="display:none"></div>
 </div>
 
+<!-- 新一輪 Modal -->
+<div class="modal-overlay" id="newRoundModal">
+  <div class="modal">
+    <h2>➕ 新增一輪</h2>
+    <div class="modal-row">
+      <label>選舉類型</label>
+      <select id="modalRoundType">
+        <option value="director">🏢 選董事</option>
+        <option value="supervisor">🔍 選監事</option>
+      </select>
+    </div>
+    <div class="modal-row">
+      <label>出線席次（名額）</label>
+      <input type="number" id="modalSeats" value="5" min="1" max="99" />
+    </div>
+    <div class="modal-btns">
+      <button class="modal-btn-cancel" onclick="closeModal()">取消</button>
+      <button class="modal-btn-ok" onclick="confirmNewRound()">確認新增</button>
+    </div>
+  </div>
+</div>
+
 <script>
-/* ── 正字筆順 ── */
+/* ══════════════════════════════════════════════════
+   正字 SVG
+══════════════════════════════════════════════════ */
 const RED = "#CC2200";
 const STROKES = [
-  "M5,7 L35,7",
-  "M20,7 L20,37",
-  "M20,22 L35,22",
-  "M12,22 L12,37",
-  "M5,37 L35,37"
+  "M5,7 L35,7", "M20,7 L20,37", "M20,22 L35,22",
+  "M12,22 L12,37", "M5,37 L35,37"
 ];
 function makeZhengSVG(n) {
   let p = '';
-  for (let i = 0; i < n && i < 5; i++)
+  for (let i=0; i<n&&i<5; i++)
     p += `<path d="${STROKES[i]}" stroke="${RED}" stroke-width="3" stroke-linecap="round" fill="none"/>`;
   return `<svg viewBox="0 0 40 44" width="34" height="38" xmlns="http://www.w3.org/2000/svg">${p}</svg>`;
 }
 
-/* ── localStorage ── */
-const KEY = 'zheng_tally_v1';
+/* ══════════════════════════════════════════════════
+   資料結構
+══════════════════════════════════════════════════ */
+const LOCAL_KEY = 'zheng_tally_v1';
 function defaultData() {
-  return { candidates: [], perRow: 18, rounds: [{ votes: [] }], currentRound: 0, savedAt: null };
+  return { candidates:[], perRow:18, rounds:[{votes:[], type:'director', seats:5}], currentRound:0, savedAt:null };
 }
-function loadData() {
+function loadLocalData() {
   try {
-    const raw = localStorage.getItem(KEY);
+    const raw = localStorage.getItem(LOCAL_KEY);
     if (!raw) return defaultData();
     const d = JSON.parse(raw);
     if (!d.perRow) d.perRow = 18;
-    d.rounds.forEach(r => { while (r.votes.length < d.candidates.length) r.votes.push(0); });
+    d.rounds.forEach((r,i) => {
+      while (r.votes.length < d.candidates.length) r.votes.push(0);
+      if (!r.type)  r.type  = i===0 ? 'director' : 'supervisor';
+      if (!r.seats) r.seats = r.type==='director' ? 5 : 1;
+    });
     return d;
   } catch(e) { return defaultData(); }
 }
-function saveData() {
+function saveLocal() { localStorage.setItem(LOCAL_KEY, JSON.stringify(data)); }
+
+let data = loadLocalData();
+let lastSentAt = null;   // 最後一次我們主動送出的 savedAt，用來防止自己的更新觸發重繪
+let isSaving   = false;
+
+/* ══════════════════════════════════════════════════
+   同步狀態 UI
+══════════════════════════════════════════════════ */
+function setSyncStatus(status, text) {
+  const dot  = document.getElementById('syncDot');
+  const span = document.getElementById('syncText');
+  const badge = document.getElementById('saveBadge');
+  dot.className  = 'sync-dot ' + status;
+  span.textContent = text;
+  badge.className  = 'save-badge ' + (status==='online'?'saved': status==='error'?'error':'syncing');
+}
+
+/* ══════════════════════════════════════════════════
+   Firebase 儲存
+══════════════════════════════════════════════════ */
+async function saveData() {
   data.savedAt = new Date().toISOString();
-  localStorage.setItem(KEY, JSON.stringify(data));
-  updateSaveBadge();
-}
-function updateSaveBadge() {
-  const el = document.getElementById('saveBadge');
-  if (!data.savedAt) { el.textContent = '尚未儲存'; el.className = 'save-badge'; return; }
-  const d = new Date(data.savedAt);
-  const t = `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
-  el.textContent = `已儲存 ${t}`; el.className = 'save-badge saved';
+  lastSentAt   = data.savedAt;
+  saveLocal();
+
+  const fb = window._firebase;
+  if (!fb || !fb.ready) {
+    setSyncStatus('offline', '本機模式（未連線 Firebase）');
+    render(); return;
+  }
+
+  setSyncStatus('syncing', '同步中…');
+  try {
+    await fb.set(fb.dbRef, data);
+    setSyncStatus('online', `已同步 ${fmtTime(data.savedAt)}`);
+  } catch(e) {
+    console.error('Firebase write error:', e);
+    setSyncStatus('error', '同步失敗（網路問題）');
+  }
+  render();
 }
 
-let data = loadData();
+function fmtTime(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`;
+}
 
-/* ── 渲染 ── */
+/* ══════════════════════════════════════════════════
+   Firebase 即時監聽（其他裝置的更新）
+══════════════════════════════════════════════════ */
+function initFirebaseListener() {
+  const fb = window._firebase;
+  if (!fb || !fb.ready) {
+    setSyncStatus('offline', '本機模式（請設定 Firebase）');
+    return;
+  }
+
+  setSyncStatus('syncing', '連線中…');
+
+  fb.onValue(fb.dbRef, (snapshot) => {
+    const remote = snapshot.val();
+
+    // 第一次讀到 null（資料庫是空的）→ 把本機資料上傳
+    if (!remote) {
+      setSyncStatus('online', '已連線（首次初始化）');
+      saveData();
+      return;
+    }
+
+    // 如果這是自己剛才送的更新，忽略（避免重複 render）
+    if (remote.savedAt && remote.savedAt === lastSentAt) {
+      setSyncStatus('online', `已同步 ${fmtTime(remote.savedAt)}`);
+      return;
+    }
+
+    // 來自其他裝置的更新 → 套用並重繪
+    console.log('收到遠端更新:', remote.savedAt);
+    data = remote;
+    saveLocal();
+    setSyncStatus('online', `已同步 ${fmtTime(remote.savedAt)} ↓ 已接收`);
+    render();
+  }, (error) => {
+    console.error('Firebase read error:', error);
+    setSyncStatus('error', '連線失敗：' + error.message);
+  });
+}
+
+/* ══════════════════════════════════════════════════
+   排名計算
+══════════════════════════════════════════════════ */
+function getRankMap(votes) {
+  const indexed = votes.map((v,i) => ({v,i})).sort((a,b) => b.v-a.v);
+  const rankMap = {};
+  let rank = 1;
+  for (let k=0; k<indexed.length; k++) {
+    if (k>0 && indexed[k].v === indexed[k-1].v) rankMap[indexed[k].i] = rankMap[indexed[k-1].i];
+    else rankMap[indexed[k].i] = rank;
+    rank++;
+  }
+  return rankMap;
+}
+function getHeadClass(rank, seats, type) {
+  if (rank===1) return 'rank-1';
+  if (rank===2) return 'rank-2';
+  if (rank===3) return 'rank-3';
+  if (rank<=seats) return type==='supervisor' ? 'rank-s' : 'rank-d';
+  return '';
+}
+function getBadgeClass(rank, seats, type) {
+  if (rank===1) return 'r1';
+  if (rank===2) return 'r2';
+  if (rank===3) return 'r3';
+  if (rank<=seats) return type==='supervisor' ? 'rs' : 'rd';
+  return null;
+}
+function rankLabel(rank) {
+  if (rank===1) return '🥇';
+  if (rank===2) return '🥈';
+  if (rank===3) return '🥉';
+  return `#${rank}`;
+}
+
+/* ══════════════════════════════════════════════════
+   渲染
+══════════════════════════════════════════════════ */
 function render() {
   document.getElementById('perRowInput').value = data.perRow;
   renderTabs();
+  renderResultsBar();
   renderBoard();
   renderSummary();
-  updateSaveBadge();
 }
 
 function renderTabs() {
   const tb = document.getElementById('tabBar');
-  if (data.rounds.length <= 1) { tb.innerHTML = ''; return; }
-  tb.innerHTML = data.rounds.map((r, i) =>
-    `<button class="tab${i===data.currentRound?' active':''}" onclick="switchRound(${i})">第 ${i+1} 輪</button>`
-  ).join('') + `<button class="btn-add-round" onclick="newRound()">＋ 新一輪</button>`;
+  const typeLabel = r => r.type==='director' ? '董事' : '監事';
+  tb.innerHTML = data.rounds.map((r,i) =>
+    `<button class="tab${i===data.currentRound?' active':''}" onclick="switchRound(${i})">
+       第 ${i+1} 輪 · ${typeLabel(r)} ${r.seats}席
+     </button>`
+  ).join('') + `<button class="btn-add-round" onclick="openNewRoundModal()">＋ 新一輪</button>`;
+}
+
+function renderResultsBar() {
+  const round = data.rounds[data.currentRound];
+  const {seats, type} = round;
+  document.getElementById('resultBarTitle').textContent =
+    type==='director' ? `🏆 董事出線（前 ${seats} 名）` : `🔍 監事出線（前 ${seats} 名）`;
+
+  const tagsEl = document.getElementById('resultsTags');
+  if (!data.candidates.length) { tagsEl.innerHTML = '<span class="no-results">尚無候選人</span>'; return; }
+
+  const votes   = round.votes;
+  const rankMap = getRankMap(votes);
+  const elected = data.candidates
+    .map((name,i) => ({name, votes:votes[i]||0, rank:rankMap[i]}))
+    .filter(c => c.rank<=seats && c.votes>0)
+    .sort((a,b) => a.rank-b.rank);
+
+  if (!elected.length) { tagsEl.innerHTML = '<span class="no-results">尚無票數</span>'; return; }
+  const tagCls = (r) => r===1?'r1':r===2?'r2':r===3?'r3':type==='supervisor'?'rs':'rd';
+  tagsEl.innerHTML = elected.map(c =>
+    `<span class="rtag ${tagCls(c.rank)}">${rankLabel(c.rank)} ${esc(c.name)} <span class="rtag-votes">${c.votes}票</span></span>`
+  ).join('');
 }
 
 function renderBoard() {
@@ -263,35 +543,45 @@ function renderBoard() {
     wrap.innerHTML = `<div class="no-candidates">
       在上方輸入候選人姓名，按「＋ 新增」即可開始<br><br>
       <button onclick="loadDefault35()" style="font-size:13px;padding:8px 20px;border-radius:8px;border:1px solid #CC2200;background:#fff;color:#CC2200;cursor:pointer;font-weight:500">
-        載入 35 位預設候選人（方便測試後刪減）
+        載入 35 位預設候選人
       </button>
     </div>`;
     return;
   }
   const round = data.rounds[data.currentRound];
-  const perRow = data.perRow || 18;
+  const {votes, seats, type} = round;
+  const perRow  = data.perRow || 18;
+  const rankMap = getRankMap(votes);
   const sections = [];
-  for (let i = 0; i < data.candidates.length; i += perRow)
-    sections.push({ start: i, end: Math.min(i + perRow, data.candidates.length) });
-  const showLabel = sections.length > 1;
+  for (let i=0; i<data.candidates.length; i+=perRow)
+    sections.push({start:i, end:Math.min(i+perRow, data.candidates.length)});
 
-  wrap.innerHTML = sections.map((sec, si) => {
+  wrap.innerHTML = sections.map((sec,si) => {
     const cols = [];
-    for (let ci = sec.start; ci < sec.end; ci++) {
+    for (let ci=sec.start; ci<sec.end; ci++) {
       const name = data.candidates[ci];
-      const v = round.votes[ci] || 0;
+      const v    = votes[ci] || 0;
+      const rank = v>0 ? rankMap[ci] : 999;
       const full = Math.floor(v/5), rem = v%5;
       let svgs = '';
       for (let g=0; g<full; g++) svgs += makeZhengSVG(5);
-      if (rem > 0) svgs += makeZhengSVG(rem);
+      if (rem>0) svgs += makeZhengSVG(rem);
       if (!full && !rem) svgs = `<span class="empty-hint">點擊或<br>按 +1</span>`;
+
+      const headCls     = v>0 ? getHeadClass(rank,seats,type) : '';
+      const badgeCls    = v>0 ? getBadgeClass(rank,seats,type) : null;
+      const isElected   = v>0 && rank<=seats;
+      const rankBadge   = badgeCls ? `<span class="rank-badge ${badgeCls}">${rankLabel(rank)}</span>` : '';
+      const electedMark = isElected ? `<span class="elected-mark ${type==='director'?'dir':'sup'}">${type==='director'?'董':'監'}</span>` : '';
 
       cols.push(`
         <div class="col">
-          <div class="col-head">
-            <button class="btn-del-col" onclick="deleteCandidate(event,${ci})" title="刪除此候選人">✕</button>
-            <div class="col-name" id="cname-${ci}" onclick="editName(${ci})" title="點擊修改姓名">${name}</div>
+          <div class="col-head ${headCls}">
+            ${rankBadge}
+            <button class="btn-del-col" onclick="deleteCandidate(event,${ci})" title="刪除">✕</button>
+            <div class="col-name" id="cname-${ci}" onclick="editName(${ci})">${esc(name)}</div>
             <div class="col-total">${v}<span class="col-total-unit"> 票</span></div>
+            ${electedMark}
           </div>
           <div class="col-body" onclick="addVote(${ci})">${svgs}</div>
           <div class="col-footer">
@@ -300,117 +590,160 @@ function renderBoard() {
           </div>
         </div>`);
     }
-    const label = showLabel
-      ? `<div class="section-label">第 ${si+1} 段（第 ${sec.start+1}～${sec.end} 位，共 ${sec.end-sec.start} 人）</div>`
-      : '';
-    return `<div class="board-section">
-      ${label}
-      <div class="columns-scroll"><div class="columns-wrap">${cols.join('')}</div></div>
-    </div>`;
+    const label = sections.length>1
+      ? `<div class="section-label">第 ${si+1} 段（第 ${sec.start+1}～${sec.end} 位，共 ${sec.end-sec.start} 人）</div>` : '';
+    return `<div class="board-section">${label}<div class="columns-scroll"><div class="columns-wrap">${cols.join('')}</div></div></div>`;
   }).join('');
 }
 
 function renderSummary() {
   const el = document.getElementById('summaryBar');
   if (!data.candidates.length) { el.style.display='none'; return; }
-  el.style.display = 'flex';
+  el.style.display='flex';
   const round = data.rounds[data.currentRound];
   const total = round.votes.reduce((a,b)=>a+b,0);
-  el.innerHTML = `<span>總票數：<strong>${total}</strong> 票</span>`;
+  el.innerHTML = `<span>總票數：<strong>${total}</strong> 票</span>
+    <span>出線席次：<strong>${round.seats}</strong> 席（${round.type==='director'?'董事':'監事'}）</span>
+    <span>候選人：<strong>${data.candidates.length}</strong> 人</span>`;
 }
 
-/* ── 候選人操作 ── */
+/* ══════════════════════════════════════════════════
+   候選人操作
+══════════════════════════════════════════════════ */
 function quickAdd() {
   const inp = document.getElementById('addInput');
   const name = inp.value.trim(); if (!name) { inp.focus(); return; }
   data.candidates.push(name);
   data.rounds.forEach(r => r.votes.push(0));
-  inp.value = ''; saveData(); render();
-  // 捲到最後一段
+  inp.value='';
+  saveData();
   setTimeout(() => {
-    const sections = document.querySelectorAll('.board-section');
-    if (sections.length) sections[sections.length-1].scrollIntoView({ behavior:'smooth', block:'nearest' });
+    const s = document.querySelectorAll('.board-section');
+    if (s.length) s[s.length-1].scrollIntoView({behavior:'smooth', block:'nearest'});
   }, 50);
   inp.focus();
 }
-
 function deleteCandidate(e, ci) {
   e.stopPropagation();
   if (!confirm(`確定要刪除「${data.candidates[ci]}」？`)) return;
-  data.candidates.splice(ci, 1);
-  data.rounds.forEach(r => r.votes.splice(ci, 1));
-  saveData(); render();
+  data.candidates.splice(ci,1);
+  data.rounds.forEach(r => r.votes.splice(ci,1));
+  saveData();
 }
-
 function editName(ci) {
   const el = document.getElementById(`cname-${ci}`);
   if (!el) return;
   const inp = document.createElement('input');
-  inp.className = 'col-name-input';
-  inp.value = data.candidates[ci]; inp.maxLength = 10;
+  inp.className='col-name-input'; inp.value=data.candidates[ci]; inp.maxLength=10;
   el.replaceWith(inp); inp.focus(); inp.select();
   function save() {
     const val = inp.value.trim() || data.candidates[ci];
-    data.candidates[ci] = val;
-    saveData(); render();
+    data.candidates[ci] = val; saveData();
   }
   inp.addEventListener('blur', save);
-  inp.addEventListener('keydown', e => {
-    if (e.key==='Enter') { e.preventDefault(); inp.blur(); }
-    if (e.key==='Escape') { inp.value=data.candidates[ci]; inp.blur(); }
+  inp.addEventListener('keydown', e2 => {
+    if (e2.key==='Enter') { e2.preventDefault(); inp.blur(); }
+    if (e2.key==='Escape') { inp.value=data.candidates[ci]; inp.blur(); }
   });
 }
-
 function changePerRow() {
   const v = parseInt(document.getElementById('perRowInput').value);
-  if (v >= 5 && v <= 50) { data.perRow = v; saveData(); render(); }
+  if (v>=5&&v<=50) { data.perRow=v; saveData(); }
 }
 
-/* ── 計票 ── */
+/* ══════════════════════════════════════════════════
+   計票
+══════════════════════════════════════════════════ */
 function addVote(ci) {
   data.rounds[data.currentRound].votes[ci] = (data.rounds[data.currentRound].votes[ci]||0)+1;
-  saveData(); render();
+  saveData();
 }
 function subVote(e, ci) {
   e.stopPropagation();
   const r = data.rounds[data.currentRound];
-  if (r.votes[ci]>0) { r.votes[ci]--; saveData(); render(); }
+  if (r.votes[ci]>0) { r.votes[ci]--; saveData(); }
 }
-function switchRound(i) { data.currentRound=i; saveData(); render(); }
-function newRound() {
-  data.rounds.push({ votes: new Array(data.candidates.length).fill(0) });
-  data.currentRound=data.rounds.length-1; saveData(); render();
+function switchRound(i) { data.currentRound=i; saveData(); }
+
+/* ══════════════════════════════════════════════════
+   新一輪 Modal
+══════════════════════════════════════════════════ */
+function openNewRoundModal() {
+  const cur = data.rounds[data.currentRound];
+  const nextType  = cur.type==='director' ? 'supervisor' : 'director';
+  const nextSeats = nextType==='director' ? 5 : 1;
+  document.getElementById('modalRoundType').value = nextType;
+  document.getElementById('modalSeats').value     = nextSeats;
+  document.getElementById('newRoundModal').classList.add('show');
 }
+function closeModal() { document.getElementById('newRoundModal').classList.remove('show'); }
+function confirmNewRound() {
+  const type  = document.getElementById('modalRoundType').value;
+  const seats = parseInt(document.getElementById('modalSeats').value)||1;
+  data.rounds.push({votes: new Array(data.candidates.length).fill(0), type, seats});
+  data.currentRound = data.rounds.length-1;
+  saveData(); closeModal();
+}
+document.getElementById('newRoundModal').addEventListener('click', function(e){ if(e.target===this) closeModal(); });
 function resetRound() {
   if (!confirm(`確定要清空第 ${data.currentRound+1} 輪的所有票數？`)) return;
   data.rounds[data.currentRound].votes = new Array(data.candidates.length).fill(0);
-  saveData(); render();
+  saveData();
 }
 function clearAllData() {
   if (!confirm('確定要清除所有候選人與票數？此操作無法復原。')) return;
-  localStorage.removeItem(KEY); data=defaultData(); render();
+  localStorage.removeItem(LOCAL_KEY);
+  data = defaultData();
+  // 也清 Firebase
+  const fb = window._firebase;
+  if (fb&&fb.ready) {
+    fb.set(fb.dbRef, data).catch(()=>{});
+  }
+  // 清完直接 reload，確保所有狀態乾淨
+  setTimeout(() => location.reload(), 300);
 }
 
-/* ── 預設35人 ── */
+/* ══════════════════════════════════════════════════
+   預設 35 人
+══════════════════════════════════════════════════ */
 function loadDefault35() {
   const names = [
-    '候選人01','候選人02','候選人03','候選人04','候選人05',
-    '候選人06','候選人07','候選人08','候選人09','候選人10',
-    '候選人11','候選人12','候選人13','候選人14','候選人15',
-    '候選人16','候選人17','候選人18','候選人19','候選人20',
-    '候選人21','候選人22','候選人23','候選人24','候選人25',
-    '候選人26','候選人27','候選人28','候選人29','候選人30',
-    '候選人31','候選人32','候選人33','候選人34','候選人35'
+    '陳志明','林美玲','黃建宏','張雅婷','李俊傑',
+    '王淑芬','吳文雄','劉秀英','蔡金龍','楊麗華',
+    '許正雄','鄭淑惠','謝哲瑋','洪怡君','郭家豪',
+    '邱依婷','曾博翔','廖欣怡','賴志豪','徐玉珍',
+    '周承翰','葉佳蓉','蘇冠廷','莊思妤','呂彥廷',
+    '江佳穎','何宇翔','羅珮瑜','高振宇','蕭嘉惠',
+    '潘冠宇','簡婉婷','朱明哲','鍾雅雯','彭建志'
   ];
   data.candidates = names;
-  data.rounds = [{ votes: new Array(35).fill(0) }];
+  data.rounds = [{votes:new Array(35).fill(0), type:'director', seats:5}];
   data.currentRound = 0;
-  saveData(); render();
+  saveData();
 }
 
-/* ── 啟動 ── */
-render();
-if (!data.candidates.length) document.getElementById('addInput').focus();
+/* ══════════════════════════════════════════════════
+   工具
+══════════════════════════════════════════════════ */
+function esc(t) {
+  return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+          .replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+}
+
+/* ══════════════════════════════════════════════════
+   啟動
+══════════════════════════════════════════════════ */
+// Firebase module 是 async，等它掛好再啟動監聽
+function waitAndInit() {
+  if (window._firebase !== undefined) {
+    render();
+    initFirebaseListener();
+    if (!data.candidates.length) document.getElementById('addInput').focus();
+  } else {
+    setTimeout(waitAndInit, 100);
+  }
+}
+waitAndInit();
 </script>
 </body>
 </html>
