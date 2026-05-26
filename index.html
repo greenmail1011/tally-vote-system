@@ -267,9 +267,62 @@
       .summary-bar, .results-bar, .modal-overlay { display: none; }
       .col-name { border-bottom: none !important; cursor: default; }
     }
+
+    /* ── 密碼遮罩 ── */
+    #pwOverlay {
+      position: fixed; inset: 0; z-index: 9999;
+      background: #1f2937;
+      display: flex; align-items: center; justify-content: center;
+    }
+    #pwBox {
+      background: #fff; border-radius: 16px; padding: 36px 40px;
+      width: 320px; max-width: 90vw; text-align: center;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+    }
+    #pwBox h2 { font-size: 20px; font-weight: 700; margin-bottom: 6px; color: #1a1a1a; }
+    #pwBox p  { font-size: 13px; color: #6b7280; margin-bottom: 20px; }
+    #pwInput {
+      width: 100%; padding: 12px 14px; font-size: 28px; text-align: center;
+      border: 2px solid #d1d5db; border-radius: 10px; outline: none;
+      font-family: inherit; letter-spacing: 8px; color: #1a1a1a;
+    }
+    #pwInput:focus { border-color: #CC2200; }
+    #pwInput.shake {
+      animation: shake 0.35s ease;
+      border-color: #ef4444 !important;
+    }
+    #pwError {
+      margin-top: 10px; font-size: 13px; color: #ef4444;
+      min-height: 18px;
+    }
+    #pwBtn {
+      margin-top: 16px; width: 100%; padding: 12px;
+      background: #CC2200; color: #fff; border: none; border-radius: 10px;
+      font-size: 16px; font-weight: 700; cursor: pointer;
+    }
+    #pwBtn:hover { background: #aa1a00; }
+    @keyframes shake {
+      0%,100%{transform:translateX(0)}
+      20%{transform:translateX(-8px)}
+      40%{transform:translateX(8px)}
+      60%{transform:translateX(-6px)}
+      80%{transform:translateX(6px)}
+    }
   </style>
 </head>
 <body>
+
+<!-- 密碼 Modal（需要操作時彈出） -->
+<div id="pwOverlay" style="display:none">
+  <div id="pwBox">
+    <h2>🔒 需要操作密碼</h2>
+    <p>輸入密碼後即可進行操作</p>
+    <input id="pwInput" type="password" maxlength="10" placeholder="••••"
+           onkeydown="if(event.key==='Enter') checkPw()" inputmode="numeric" />
+    <div id="pwError"></div>
+    <button id="pwBtn" onclick="checkPw()">確認</button>
+  </div>
+</div>
 
 <!-- 頂部工具列 -->
 <div class="topbar">
@@ -278,18 +331,19 @@
     <span class="sync-dot offline" id="syncDot"></span>
     <span id="syncText">初始化中…</span>
   </span>
-  <button class="topbar-btn" onclick="openNewRoundModal()">＋ 新一輪</button>
-  <button class="topbar-btn" onclick="resetRound()">↺ 清空此輪</button>
+  <button class="topbar-btn" id="lockBtn" onclick="toggleLock()" title="點擊解鎖操作">🔒 觀看模式</button>
+  <button class="topbar-btn" onclick="requireAuth(openNewRoundModal)">＋ 新一輪</button>
+  <button class="topbar-btn" onclick="requireAuth(resetRound)">↺ 清空此輪</button>
   <button class="topbar-btn" onclick="window.print()">🖨 列印</button>
-  <button class="topbar-btn danger" onclick="clearAllData()">清除所有資料</button>
+  <button class="topbar-btn danger" onclick="requireAuth(clearAllData)">清除所有資料</button>
 </div>
 
 <!-- 新增候選人 -->
 <div class="add-row">
   <label>新增候選人：</label>
   <input class="add-input" id="addInput" placeholder="輸入姓名" maxlength="10"
-         onkeydown="if(event.key==='Enter') quickAdd()" />
-  <button class="add-btn" onclick="quickAdd()">＋ 新增</button>
+         onkeydown="if(event.key==='Enter') requireAuth(quickAdd)" />
+  <button class="add-btn" onclick="requireAuth(quickAdd)">＋ 新增</button>
   <div class="per-row-wrap">
     <label>每段人數：</label>
     <input class="per-row-input" type="number" id="perRowInput" min="5" max="50"
@@ -328,6 +382,7 @@
     <div class="modal-btns">
       <button class="modal-btn-cancel" onclick="closeModal()">取消</button>
       <button class="modal-btn-ok" onclick="confirmNewRound()">確認新增</button>
+      <!-- confirmNewRound 已在 openNewRoundModal 時驗證過，直接執行 -->
     </div>
   </div>
 </div>
@@ -578,15 +633,15 @@ function renderBoard() {
         <div class="col">
           <div class="col-head ${headCls}">
             ${rankBadge}
-            <button class="btn-del-col" onclick="deleteCandidate(event,${ci})" title="刪除">✕</button>
-            <div class="col-name" id="cname-${ci}" onclick="editName(${ci})">${esc(name)}</div>
+            <button class="btn-del-col" onclick="requireAuth(()=>deleteCandidate(event,${ci}))" title="刪除">✕</button>
+            <div class="col-name" id="cname-${ci}" onclick="requireAuth(()=>editName(${ci}))">${esc(name)}</div>
             <div class="col-total">${v}<span class="col-total-unit"> 票</span></div>
             ${electedMark}
           </div>
-          <div class="col-body" onclick="addVote(${ci})">${svgs}</div>
+          <div class="col-body" onclick="requireAuth(()=>addVote(${ci}))">${svgs}</div>
           <div class="col-footer">
-            <button class="btn-add-vote" onclick="addVote(${ci})">+1</button>
-            <button class="btn-sub-vote" onclick="subVote(event,${ci})">−1</button>
+            <button class="btn-add-vote" onclick="requireAuth(()=>addVote(${ci}))">+1</button>
+            <button class="btn-sub-vote" onclick="requireAuth(e=>subVote(e,${ci}))">−1</button>
           </div>
         </div>`);
     }
@@ -723,8 +778,76 @@ function loadDefault35() {
 }
 
 /* ══════════════════════════════════════════════════
+   密碼驗證（操作時才需要）
+══════════════════════════════════════════════════ */
+const PW = '0809';
+let pendingAction = null;
+
+function isAuthed() { return sessionStorage.getItem('tally_auth') === '1'; }
+
+function requireAuth(action) {
+  if (isAuthed()) {
+    action();
+  } else {
+    pendingAction = action;
+    document.getElementById('pwOverlay').style.display = 'flex';
+    document.getElementById('pwError').textContent = '';
+    document.getElementById('pwInput').value = '';
+    setTimeout(() => document.getElementById('pwInput').focus(), 100);
+  }
+}
+
+function toggleLock() {
+  if (isAuthed()) {
+    sessionStorage.removeItem('tally_auth');
+    updateLockBtn();
+  } else {
+    requireAuth(() => {});
+  }
+}
+
+function updateLockBtn() {
+  const btn = document.getElementById('lockBtn');
+  if (!btn) return;
+  if (isAuthed()) {
+    btn.textContent = '🔓 操作模式';
+    btn.style.color = '#166534';
+    btn.style.borderColor = '#4ade80';
+  } else {
+    btn.textContent = '🔒 觀看模式';
+    btn.style.color = '';
+    btn.style.borderColor = '';
+  }
+}
+
+function checkPw() {
+  const val = document.getElementById('pwInput').value;
+  if (val === PW) {
+    sessionStorage.setItem('tally_auth', '1');
+    document.getElementById('pwOverlay').style.display = 'none';
+    document.getElementById('pwInput').value = '';
+    updateLockBtn();
+    if (pendingAction) { pendingAction(); pendingAction = null; }
+  } else {
+    const inp = document.getElementById('pwInput');
+    inp.classList.remove('shake');
+    void inp.offsetWidth;
+    inp.classList.add('shake');
+    document.getElementById('pwError').textContent = '密碼錯誤，請再試一次';
+    inp.value = '';
+    inp.focus();
+  }
+}
+
+// 點背景關閉 modal
+document.getElementById('pwOverlay').addEventListener('click', function(e) {
+  if (e.target === this) { this.style.display = 'none'; pendingAction = null; }
+});
+
+/* ══════════════════════════════════════════════════
    工具
 ══════════════════════════════════════════════════ */
+
 function esc(t) {
   return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
           .replace(/"/g,'&quot;').replace(/'/g,'&#039;');
@@ -737,6 +860,7 @@ function esc(t) {
 function waitAndInit() {
   if (window._firebase !== undefined) {
     render();
+    updateLockBtn();
     initFirebaseListener();
     if (!data.candidates.length) document.getElementById('addInput').focus();
   } else {
