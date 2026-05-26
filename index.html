@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>董監事正字計票系統</title>
+<style>
+    body {
+        margin: 0;
+        background: #f5f5f5;
+        font-family: "Microsoft JhengHei", "PingFang TC", sans-serif;
+    }
+
+    .header {
+        background: #1f2937;
+        color: white;
+        padding: 20px;
+        text-align: center;
+        font-size: 40px;
+        font-weight: bold;
+    }
+
+    .toolbar {
+        display: flex;
+        gap: 10px;
+        padding: 20px;
+        flex-wrap: wrap;
+        background: white;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+
+    .toolbar input {
+        padding: 10px;
+        font-size: 20px;
+        width: 250px;
+    }
+
+    .toolbar button {
+        padding: 10px 20px;
+        font-size: 18px;
+        border: none;
+        border-radius: 10px;
+        cursor: pointer;
+        background: #2563eb;
+        color: white;
+    }
+
+    .toolbar button:hover {
+        background: #1d4ed8;
+    }
+
+    .container {
+        padding: 20px;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+        gap: 20px;
+    }
+
+    .card {
+        background: white;
+        border-radius: 20px;
+        padding: 25px;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+    }
+
+    .name {
+        font-size: 42px;
+        font-weight: bold;
+        margin-bottom: 20px;
+    }
+
+    .tally {
+        font-size: 34px;
+        line-height: 1.8;
+        word-break: break-all;
+        min-height: 120px;
+        color: #111827;
+    }
+
+    .count {
+        margin-top: 20px;
+        font-size: 48px;
+        font-weight: bold;
+        color: #dc2626;
+    }
+
+    .buttons {
+        margin-top: 20px;
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
+    .vote-btn {
+        background: #16a34a;
+    }
+
+    .vote-btn:hover {
+        background: #15803d;
+    }
+
+    .minus-btn {
+        background: #ea580c;
+    }
+
+    .minus-btn:hover {
+        background: #c2410c;
+    }
+
+    .delete-btn {
+        background: #dc2626;
+    }
+
+    .delete-btn:hover {
+        background: #b91c1c;
+    }
+
+    .buttons button {
+        padding: 12px 20px;
+        border: none;
+        border-radius: 12px;
+        color: white;
+        font-size: 18px;
+        cursor: pointer;
+    }
+
+    .footer {
+        text-align: center;
+        padding: 30px;
+        color: #666;
+        font-size: 18px;
+    }
+
+    @media (max-width: 600px) {
+        .header {
+            font-size: 28px;
+        }
+
+        .container {
+            grid-template-columns: 1fr;
+            padding: 12px;
+        }
+
+        .card {
+            padding: 18px;
+        }
+
+        .name {
+            font-size: 32px;
+        }
+
+        .tally {
+            font-size: 28px;
+        }
+
+        .count {
+            font-size: 38px;
+        }
+    }
+</style>
+</head>
+<body>
+
+<div class="header">
+    董監事正字計票系統
+</div>
+
+<div class="toolbar">
+    <input type="text" id="candidateName" placeholder="輸入候選人姓名">
+    <button onclick="addCandidate()">新增候選人</button>
+    <button onclick="resetAll()">全部歸零</button>
+    <button onclick="sortCandidates()">依票數排序</button>
+</div>
+
+<div class="container" id="candidateContainer"></div>
+
+<div class="footer">
+    正字模式即時唱票系統
+</div>
+
+<script>
+    let candidates = [];
+
+    function saveData() {
+        localStorage.setItem('tallyCandidates', JSON.stringify(candidates));
+    }
+
+    function loadData() {
+        const data = localStorage.getItem('tallyCandidates');
+
+        if (data) {
+            candidates = JSON.parse(data);
+            render();
+        }
+    }
+
+    function addCandidate() {
+        const input = document.getElementById('candidateName');
+        const name = input.value.trim();
+
+        if (!name) return;
+
+        candidates.push({
+            name,
+            votes: 0
+        });
+
+        input.value = '';
+
+        saveData();
+        render();
+    }
+
+    function addVote(index) {
+        candidates[index].votes++;
+        saveData();
+        render();
+    }
+
+    function minusVote(index) {
+        if (candidates[index].votes > 0) {
+            candidates[index].votes--;
+            saveData();
+            render();
+        }
+    }
+
+    function deleteCandidate(index) {
+        if (confirm('確定刪除？')) {
+            candidates.splice(index, 1);
+            saveData();
+            render();
+        }
+    }
+
+    function resetAll() {
+        if (confirm('確定全部歸零？')) {
+            candidates.forEach(candidate => candidate.votes = 0);
+            saveData();
+            render();
+        }
+    }
+
+    function sortCandidates() {
+        candidates.sort((a, b) => b.votes - a.votes);
+        saveData();
+        render();
+    }
+
+    function generateTally(votes) {
+        let result = '';
+
+        for (let i = 1; i <= votes; i++) {
+            result += '正';
+
+            if (i % 5 === 0) {
+                result += ' ';
+            }
+        }
+
+        return result;
+    }
+
+    function escapeHtml(text) {
+        return text
+            .replaceAll('&', '&amp;')
+            .replaceAll('<', '&lt;')
+            .replaceAll('>', '&gt;')
+            .replaceAll('"', '&quot;')
+            .replaceAll("'", '&#039;');
+    }
+
+    function render() {
+        const container = document.getElementById('candidateContainer');
+        container.innerHTML = '';
+
+        candidates.forEach((candidate, index) => {
+            const card = document.createElement('div');
+            card.className = 'card';
+
+            card.innerHTML = `
+                <div class="name">${escapeHtml(candidate.name)}</div>
+
+                <div class="tally">
+                    ${generateTally(candidate.votes)}
+                </div>
+
+                <div class="count">
+                    ${candidate.votes} 票
+                </div>
+
+                <div class="buttons">
+                    <button class="vote-btn" onclick="addVote(${index})">
+                        ＋1 票
+                    </button>
+
+                    <button class="minus-btn" onclick="minusVote(${index})">
+                        －1 票
+                    </button>
+
+                    <button class="delete-btn" onclick="deleteCandidate(${index})">
+                        刪除
+                    </button>
+                </div>
+            `;
+
+            container.appendChild(card);
+        });
+    }
+
+    document.getElementById('candidateName').addEventListener('keydown', function(event) {
+        if (event.key === 'Enter') {
+            addCandidate();
+        }
+    });
+
+    loadData();
+</script>
+
+</body>
+</html>
