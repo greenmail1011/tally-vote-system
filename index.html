@@ -9,301 +9,408 @@
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang TC", "Noto Sans TC", sans-serif;
-      background: #f5f5f0;
-      color: #1a1a1a;
-      padding: 24px;
-      min-height: 100vh;
+      background: #f5f5f0; color: #1a1a1a; min-height: 100vh;
     }
-    h1 { font-size: 20px; font-weight: 500; margin-bottom: 16px; }
+
+    /* ── 頂部 ── */
+    .topbar {
+      background: #fff; border-bottom: 1px solid #e0ddd8;
+      padding: 12px 20px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    }
+    .topbar h1 { font-size: 17px; font-weight: 500; flex: 1; min-width: 120px; }
+    .save-badge { font-size: 11px; color: #888; background: #f0ede8; padding: 3px 9px; border-radius: 20px; white-space: nowrap; }
+    .save-badge.saved { color: #2a7a4b; background: #e6f4ec; }
+    .topbar-btn {
+      font-size: 12px; padding: 6px 13px; border-radius: 7px;
+      border: 1px solid #ccc; background: #fff; color: #444; cursor: pointer;
+    }
+    .topbar-btn:hover { background: #f0ede8; }
+    .topbar-btn.danger { border-color: #f5c6c6; color: #CC2200; }
+    .topbar-btn.danger:hover { background: #fff5f3; }
+
+    /* ── 新增候選人列 ── */
+    .add-row {
+      background: #fff; border-bottom: 1px solid #e8e5e0;
+      padding: 10px 20px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    }
+    .add-row label { font-size: 13px; color: #555; white-space: nowrap; }
+    .add-input {
+      font-size: 14px; padding: 6px 12px; border-radius: 8px;
+      border: 1px solid #ccc; font-family: inherit; outline: none; width: 160px;
+    }
+    .add-input:focus { border-color: #CC2200; }
+    .add-btn {
+      font-size: 13px; padding: 6px 14px; border-radius: 8px;
+      border: none; background: #CC2200; color: #fff; cursor: pointer; font-weight: 500; white-space: nowrap;
+    }
+    .add-btn:hover { background: #aa1a00; }
+    .per-row-wrap { display: flex; align-items: center; gap: 6px; margin-left: auto; }
+    .per-row-wrap label { font-size: 12px; color: #888; white-space: nowrap; }
+    .per-row-input {
+      width: 50px; font-size: 13px; padding: 4px 6px; border-radius: 6px;
+      border: 1px solid #ccc; text-align: center; font-family: inherit; outline: none;
+    }
 
     /* ── 分輪標籤 ── */
-    .tab-bar {
-      display: flex;
-      gap: 6px;
-      margin-bottom: 14px;
-      flex-wrap: wrap;
-      align-items: center;
-    }
+    .main { padding: 14px 20px; }
+    .tab-bar { display: flex; gap: 5px; margin-bottom: 12px; flex-wrap: wrap; align-items: center; }
     .tab {
-      font-size: 13px;
-      padding: 6px 16px;
-      border-radius: 8px;
-      border: 1px solid #ccc;
-      background: #fff;
-      color: #666;
-      cursor: pointer;
+      font-size: 13px; padding: 5px 14px; border-radius: 7px;
+      border: 1px solid #ccc; background: #fff; color: #666; cursor: pointer;
     }
-    .tab.active {
-      background: #CC2200;
-      color: #fff;
-      border-color: #CC2200;
-      font-weight: 500;
-    }
+    .tab.active { background: #CC2200; color: #fff; border-color: #CC2200; font-weight: 500; }
     .tab:not(.active):hover { background: #f0ede8; }
     .btn-add-round {
-      font-size: 13px;
-      padding: 6px 14px;
-      border-radius: 8px;
-      border: 1px dashed #bbb;
-      background: transparent;
-      color: #999;
-      cursor: pointer;
+      font-size: 12px; padding: 5px 12px; border-radius: 7px;
+      border: 1px dashed #bbb; background: transparent; color: #999; cursor: pointer;
     }
     .btn-add-round:hover { color: #CC2200; border-color: #CC2200; }
 
+    /* ── 分段 ── */
+    .board-section { margin-bottom: 14px; }
+    .section-label {
+      font-size: 11px; color: #999; font-weight: 500; letter-spacing: 0.5px;
+      margin-bottom: 5px; padding-left: 2px;
+    }
+    .columns-scroll { overflow-x: auto; border-radius: 10px; }
+
     /* ── 計票主體 ── */
     .columns-wrap {
-      display: flex;
-      gap: 1px;
-      background: #ccc;
-      border: 1px solid #ccc;
-      border-radius: 10px;
-      overflow: hidden;
+      display: inline-flex; gap: 1px;
+      background: #ccc; border: 1px solid #ccc;
+      border-radius: 10px; overflow: hidden;
     }
-    .col {
-      background: #fff;
-      flex: 1;
-      min-width: 0;
-      display: flex;
-      flex-direction: column;
+    .no-candidates {
+      padding: 40px; text-align: center; color: #aaa; font-size: 14px;
+      background: #fff; border-radius: 10px; border: 1px dashed #ddd;
     }
-    .col-head {
-      padding: 10px 8px;
-      background: #f0ede8;
-      border-bottom: 1px solid #ddd;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 4px;
-    }
-    .col-name {
-      font-size: 13px;
-      font-weight: 500;
-      text-align: center;
-      word-break: break-all;
-      cursor: pointer;
-      border-bottom: 1px dashed #aaa;
-      padding-bottom: 1px;
-    }
-    .col-name:hover { color: #CC2200; border-bottom-color: #CC2200; }
-    .col-name-input {
-      font-size: 13px;
-      font-weight: 500;
-      text-align: center;
-      width: 90%;
-      border: none;
-      border-bottom: 2px solid #CC2200;
-      background: transparent;
-      outline: none;
-      font-family: inherit;
-      color: #1a1a1a;
-    }
-    .col-total { font-size: 12px; color: #666; }
-    .col-body {
-      flex: 1;
-      padding: 8px 6px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 4px;
-      cursor: pointer;
-      user-select: none;
-      min-height: 160px;
-      transition: background 0.1s;
-    }
-    .col-body:hover { background: #f8f7f4; }
-    .col-body:active { background: #eeece8; }
-    .empty-hint { font-size: 12px; color: #aaa; margin-top: 12px; }
-    .col-footer {
-      padding: 6px;
-      display: flex;
-      justify-content: center;
-      border-top: 1px solid #eee;
-    }
-    .btn-minus {
-      font-size: 18px;
-      width: 30px;
-      height: 30px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      border-radius: 8px;
-      border: 1px solid #ddd;
-      background: transparent;
-      color: #666;
-      cursor: pointer;
-    }
-    .btn-minus:hover { background: #f0ede8; }
 
-    /* ── 工具列 ── */
-    .toolbar {
-      display: flex;
-      gap: 10px;
-      align-items: center;
-      margin-top: 16px;
-      flex-wrap: wrap;
+    /* ── 候選人欄 ── */
+    .col { background: #fff; width: 88px; flex-shrink: 0; display: flex; flex-direction: column; }
+
+    .col-head {
+      padding: 6px 5px 5px; background: #f0ede8;
+      border-bottom: 1px solid #ddd; position: relative;
+      display: flex; flex-direction: column; align-items: center; gap: 2px;
+      min-height: 58px;
     }
-    .name-input {
-      font-size: 14px;
-      padding: 7px 12px;
-      border-radius: 8px;
-      border: 1px solid #ccc;
-      background: #fff;
-      color: #1a1a1a;
-      width: 130px;
+    /* 刪除按鈕 */
+    .btn-del-col {
+      position: absolute; top: 3px; right: 3px;
+      width: 16px; height: 16px; border-radius: 4px;
+      border: none; background: transparent; color: #ccc;
+      cursor: pointer; font-size: 11px; line-height: 1;
+      display: flex; align-items: center; justify-content: center; padding: 0;
     }
-    .name-input:focus { outline: 2px solid #CC2200; border-color: transparent; }
-    .btn {
-      font-size: 13px;
-      padding: 7px 16px;
-      border-radius: 8px;
-      border: 1px solid #ccc;
-      background: #fff;
-      color: #333;
-      cursor: pointer;
+    .col-head:hover .btn-del-col { color: #CC2200; background: #ffe8e3; }
+    .btn-del-col:hover { color: #CC2200 !important; }
+
+    /* 姓名（可點擊編輯） */
+    .col-name {
+      font-size: 12px; font-weight: 500; text-align: center;
+      word-break: break-all; line-height: 1.4; color: #1a1a1a;
+      cursor: pointer; padding: 1px 16px 1px 4px;
+      border-bottom: 1px dashed transparent; width: 100%;
     }
-    .btn:hover { background: #f0ede8; }
+    .col-name:hover { border-bottom-color: #CC2200; color: #CC2200; }
+    .col-name-input {
+      font-size: 12px; font-weight: 500; text-align: center; width: 100%;
+      border: none; border-bottom: 1.5px solid #CC2200;
+      background: transparent; outline: none; font-family: inherit; color: #1a1a1a;
+      padding: 0 4px;
+    }
+    .col-total { font-size: 20px; font-weight: 700; color: #CC2200; line-height: 1; }
+    .col-total-unit { font-size: 10px; color: #bbb; font-weight: 400; }
+
+    .col-body {
+      flex: 1; padding: 6px 5px;
+      display: flex; flex-direction: column; align-items: center; gap: 3px;
+      cursor: pointer; min-height: 90px;
+      transition: background 0.1s; user-select: none;
+    }
+    .col-body:hover { background: #fdf9f9; }
+    .col-body:active { background: #f5ecec; }
+    .empty-hint { font-size: 10px; color: #ccc; margin-top: 8px; text-align: center; line-height: 1.5; }
+
+    /* ── 按鈕列 ── */
+    .col-footer { padding: 5px 4px; border-top: 1px solid #eee; display: flex; gap: 3px; }
+    .btn-add-vote {
+      flex: 1; font-size: 12px; font-weight: 600; padding: 6px 0;
+      border-radius: 6px; border: none; background: #1a9e5c; color: #fff; cursor: pointer;
+    }
+    .btn-add-vote:hover { background: #158a4f; }
+    .btn-add-vote:active { transform: scale(0.96); }
+    .btn-sub-vote {
+      flex: 1; font-size: 12px; font-weight: 600; padding: 6px 0;
+      border-radius: 6px; border: none; background: #e07c1a; color: #fff; cursor: pointer;
+    }
+    .btn-sub-vote:hover { background: #c56c14; }
+    .btn-sub-vote:active { transform: scale(0.96); }
+
+    /* ── 摘要 ── */
+    .summary-bar {
+      margin-top: 10px; padding: 8px 14px;
+      background: #fff; border: 1px solid #e0ddd8; border-radius: 8px;
+      font-size: 12px; color: #555; display: flex; gap: 12px; flex-wrap: wrap;
+    }
+    .summary-bar strong { color: #1a1a1a; }
 
     @media print {
-      body { background: #fff; padding: 12px; }
-      .toolbar, .col-footer, .btn-add-round { display: none; }
-      .col-name { border-bottom: none; }
+      .topbar, .add-row, .col-footer, .btn-add-round, .btn-del-col, .summary-bar { display: none; }
+      .col-name { border-bottom: none !important; cursor: default; }
     }
   </style>
 </head>
 <body>
 
-<h1>正字計票板</h1>
+<!-- 頂部工具列 -->
+<div class="topbar">
+  <h1>正字計票板</h1>
+  <span class="save-badge" id="saveBadge">尚未儲存</span>
+  <button class="topbar-btn" onclick="newRound()">＋ 新一輪</button>
+  <button class="topbar-btn" onclick="resetRound()">↺ 清空此輪</button>
+  <button class="topbar-btn" onclick="window.print()">🖨 列印</button>
+  <button class="topbar-btn danger" onclick="clearAllData()">清除所有資料</button>
+</div>
 
-<div class="tab-bar" id="tabBar"></div>
-<div class="columns-wrap" id="columns"></div>
+<!-- 新增候選人 -->
+<div class="add-row">
+  <label>新增候選人：</label>
+  <input class="add-input" id="addInput" placeholder="輸入姓名" maxlength="10"
+         onkeydown="if(event.key==='Enter') quickAdd()" />
+  <button class="add-btn" onclick="quickAdd()">＋ 新增</button>
+  <div class="per-row-wrap">
+    <label>每段人數：</label>
+    <input class="per-row-input" type="number" id="perRowInput" min="5" max="50"
+           onchange="changePerRow()" />
+  </div>
+</div>
 
-<div class="toolbar">
-  <input class="name-input" id="newName" placeholder="輸入候選人名稱" maxlength="8" />
-  <button class="btn" onclick="addColumn()">＋ 新增欄位</button>
-  <button class="btn" onclick="resetRound()">↺ 清空此輪</button>
-  <button class="btn" onclick="window.print()">🖨 列印</button>
+<!-- 主內容 -->
+<div class="main">
+  <div class="tab-bar" id="tabBar"></div>
+  <div id="boardWrap"></div>
+  <div class="summary-bar" id="summaryBar" style="display:none"></div>
 </div>
 
 <script>
-/*
-  正字正確筆順（5畫）：
-  1 上橫：全寬頂部橫線
-  2 中豎：由上橫偏左位置（x=14）向下貫穿至底（全高）
-  3 右橫：由中豎往右延伸（僅右半邊，x=14→x=36）
-  4 左豎：左側短豎，對齊最左邊（x=4），從中橫高度往下至底
-  5 下橫：全寬底部橫線
-*/
+/* ── 正字筆順 ── */
 const RED = "#CC2200";
 const STROKES = [
-  "M5,7 L35,7",    // 1 上橫（全寬）
-  "M20,7 L20,37",  // 2 中豎（全高貫穿）
-  "M20,22 L35,22", // 3 右橫（中豎往右，右半邊）
-  "M12,22 L12,37", // 4 左豎（往右移，位於左側 x=12）
-  "M5,37 L35,37"   // 5 下橫（全寬）
+  "M5,7 L35,7",
+  "M20,7 L20,37",
+  "M20,22 L35,22",
+  "M12,22 L12,37",
+  "M5,37 L35,37"
 ];
-
 function makeZhengSVG(n) {
-  let paths = '';
+  let p = '';
   for (let i = 0; i < n && i < 5; i++)
-    paths += `<path d="${STROKES[i]}" stroke="${RED}" stroke-width="3" stroke-linecap="round" fill="none"/>`;
-  return `<svg viewBox="0 0 40 44" width="36" height="40" xmlns="http://www.w3.org/2000/svg">${paths}</svg>`;
+    p += `<path d="${STROKES[i]}" stroke="${RED}" stroke-width="3" stroke-linecap="round" fill="none"/>`;
+  return `<svg viewBox="0 0 40 44" width="34" height="38" xmlns="http://www.w3.org/2000/svg">${p}</svg>`;
 }
 
-let cur = 0;
-let rounds = [
-  { cols: [{ name: "候選人一", votes: 0 }, { name: "候選人二", votes: 0 }, { name: "候選人三", votes: 0 }] }
-];
+/* ── localStorage ── */
+const KEY = 'zheng_tally_v1';
+function defaultData() {
+  return { candidates: [], perRow: 18, rounds: [{ votes: [] }], currentRound: 0, savedAt: null };
+}
+function loadData() {
+  try {
+    const raw = localStorage.getItem(KEY);
+    if (!raw) return defaultData();
+    const d = JSON.parse(raw);
+    if (!d.perRow) d.perRow = 18;
+    d.rounds.forEach(r => { while (r.votes.length < d.candidates.length) r.votes.push(0); });
+    return d;
+  } catch(e) { return defaultData(); }
+}
+function saveData() {
+  data.savedAt = new Date().toISOString();
+  localStorage.setItem(KEY, JSON.stringify(data));
+  updateSaveBadge();
+}
+function updateSaveBadge() {
+  const el = document.getElementById('saveBadge');
+  if (!data.savedAt) { el.textContent = '尚未儲存'; el.className = 'save-badge'; return; }
+  const d = new Date(data.savedAt);
+  const t = `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+  el.textContent = `已儲存 ${t}`; el.className = 'save-badge saved';
+}
 
+let data = loadData();
+
+/* ── 渲染 ── */
 function render() {
-  // 標籤列
-  const tb = document.getElementById('tabBar');
-  tb.innerHTML = rounds.map((r, i) =>
-    `<button class="tab${i===cur?' active':''}" onclick="switchRound(${i})">第 ${i+1} 輪</button>`
-  ).join('') + `<button class="btn-add-round" onclick="newRound()">＋ 新一輪</button>`;
-
-  // 計票主體
-  const wrap = document.getElementById('columns');
-  wrap.innerHTML = '';
-  const cols = rounds[cur].cols;
-
-  cols.forEach((col, ci) => {
-    const full = Math.floor(col.votes / 5);
-    const rem  = col.votes % 5;
-
-    let svgs = '';
-    for (let g = 0; g < full; g++) svgs += makeZhengSVG(5);
-    if (rem > 0) svgs += makeZhengSVG(rem);
-    if (!full && !rem) svgs = `<span class="empty-hint">點擊加票</span>`;
-
-    const el = document.createElement('div');
-    el.className = 'col';
-    el.innerHTML = `
-      <div class="col-head">
-        <div class="col-name" id="name-${ci}" onclick="editName(${ci})" title="點擊修改名稱">${col.name}</div>
-        <div class="col-total">${col.votes} 票</div>
-      </div>
-      <div class="col-body" onclick="addVote(${ci})" title="點擊加一票">${svgs}</div>
-      <div class="col-footer">
-        <button class="btn-minus" onclick="subVote(event,${ci})" title="減一票">−</button>
-      </div>`;
-    wrap.appendChild(el);
-  });
+  document.getElementById('perRowInput').value = data.perRow;
+  renderTabs();
+  renderBoard();
+  renderSummary();
+  updateSaveBadge();
 }
 
-function switchRound(i) { cur = i; render(); }
+function renderTabs() {
+  const tb = document.getElementById('tabBar');
+  if (data.rounds.length <= 1) { tb.innerHTML = ''; return; }
+  tb.innerHTML = data.rounds.map((r, i) =>
+    `<button class="tab${i===data.currentRound?' active':''}" onclick="switchRound(${i})">第 ${i+1} 輪</button>`
+  ).join('') + `<button class="btn-add-round" onclick="newRound()">＋ 新一輪</button>`;
+}
 
-function newRound() {
-  // 複製目前候選人名稱，票數歸零
-  const names = rounds[cur].cols.map(c => c.name);
-  rounds.push({ cols: names.map(n => ({ name: n, votes: 0 })) });
-  cur = rounds.length - 1;
-  render();
+function renderBoard() {
+  const wrap = document.getElementById('boardWrap');
+  if (!data.candidates.length) {
+    wrap.innerHTML = `<div class="no-candidates">
+      在上方輸入候選人姓名，按「＋ 新增」即可開始<br><br>
+      <button onclick="loadDefault35()" style="font-size:13px;padding:8px 20px;border-radius:8px;border:1px solid #CC2200;background:#fff;color:#CC2200;cursor:pointer;font-weight:500">
+        載入 35 位預設候選人（方便測試後刪減）
+      </button>
+    </div>`;
+    return;
+  }
+  const round = data.rounds[data.currentRound];
+  const perRow = data.perRow || 18;
+  const sections = [];
+  for (let i = 0; i < data.candidates.length; i += perRow)
+    sections.push({ start: i, end: Math.min(i + perRow, data.candidates.length) });
+  const showLabel = sections.length > 1;
+
+  wrap.innerHTML = sections.map((sec, si) => {
+    const cols = [];
+    for (let ci = sec.start; ci < sec.end; ci++) {
+      const name = data.candidates[ci];
+      const v = round.votes[ci] || 0;
+      const full = Math.floor(v/5), rem = v%5;
+      let svgs = '';
+      for (let g=0; g<full; g++) svgs += makeZhengSVG(5);
+      if (rem > 0) svgs += makeZhengSVG(rem);
+      if (!full && !rem) svgs = `<span class="empty-hint">點擊或<br>按 +1</span>`;
+
+      cols.push(`
+        <div class="col">
+          <div class="col-head">
+            <button class="btn-del-col" onclick="deleteCandidate(event,${ci})" title="刪除此候選人">✕</button>
+            <div class="col-name" id="cname-${ci}" onclick="editName(${ci})" title="點擊修改姓名">${name}</div>
+            <div class="col-total">${v}<span class="col-total-unit"> 票</span></div>
+          </div>
+          <div class="col-body" onclick="addVote(${ci})">${svgs}</div>
+          <div class="col-footer">
+            <button class="btn-add-vote" onclick="addVote(${ci})">+1</button>
+            <button class="btn-sub-vote" onclick="subVote(event,${ci})">−1</button>
+          </div>
+        </div>`);
+    }
+    const label = showLabel
+      ? `<div class="section-label">第 ${si+1} 段（第 ${sec.start+1}～${sec.end} 位，共 ${sec.end-sec.start} 人）</div>`
+      : '';
+    return `<div class="board-section">
+      ${label}
+      <div class="columns-scroll"><div class="columns-wrap">${cols.join('')}</div></div>
+    </div>`;
+  }).join('');
+}
+
+function renderSummary() {
+  const el = document.getElementById('summaryBar');
+  if (!data.candidates.length) { el.style.display='none'; return; }
+  el.style.display = 'flex';
+  const round = data.rounds[data.currentRound];
+  const total = round.votes.reduce((a,b)=>a+b,0);
+  el.innerHTML = `<span>總票數：<strong>${total}</strong> 票</span>`;
+}
+
+/* ── 候選人操作 ── */
+function quickAdd() {
+  const inp = document.getElementById('addInput');
+  const name = inp.value.trim(); if (!name) { inp.focus(); return; }
+  data.candidates.push(name);
+  data.rounds.forEach(r => r.votes.push(0));
+  inp.value = ''; saveData(); render();
+  // 捲到最後一段
+  setTimeout(() => {
+    const sections = document.querySelectorAll('.board-section');
+    if (sections.length) sections[sections.length-1].scrollIntoView({ behavior:'smooth', block:'nearest' });
+  }, 50);
+  inp.focus();
+}
+
+function deleteCandidate(e, ci) {
+  e.stopPropagation();
+  if (!confirm(`確定要刪除「${data.candidates[ci]}」？`)) return;
+  data.candidates.splice(ci, 1);
+  data.rounds.forEach(r => r.votes.splice(ci, 1));
+  saveData(); render();
 }
 
 function editName(ci) {
-  const nameEl = document.getElementById(`name-${ci}`);
-  if (!nameEl) return;
-  const input = document.createElement('input');
-  input.className = 'col-name-input';
-  input.value = rounds[cur].cols[ci].name;
-  input.maxLength = 8;
-  nameEl.replaceWith(input);
-  input.focus(); input.select();
+  const el = document.getElementById(`cname-${ci}`);
+  if (!el) return;
+  const inp = document.createElement('input');
+  inp.className = 'col-name-input';
+  inp.value = data.candidates[ci]; inp.maxLength = 10;
+  el.replaceWith(inp); inp.focus(); inp.select();
   function save() {
-    const val = input.value.trim() || rounds[cur].cols[ci].name;
-    // 同步所有輪次的同位候選人名稱
-    rounds.forEach(r => { if (r.cols[ci]) r.cols[ci].name = val; });
-    render();
+    const val = inp.value.trim() || data.candidates[ci];
+    data.candidates[ci] = val;
+    saveData(); render();
   }
-  input.addEventListener('blur', save);
-  input.addEventListener('keydown', e => {
-    if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
-    if (e.key === 'Escape') { input.value = rounds[cur].cols[ci].name; input.blur(); }
+  inp.addEventListener('blur', save);
+  inp.addEventListener('keydown', e => {
+    if (e.key==='Enter') { e.preventDefault(); inp.blur(); }
+    if (e.key==='Escape') { inp.value=data.candidates[ci]; inp.blur(); }
   });
 }
 
-function addVote(i) { rounds[cur].cols[i].votes++; render(); }
-function subVote(e, i) {
+function changePerRow() {
+  const v = parseInt(document.getElementById('perRowInput').value);
+  if (v >= 5 && v <= 50) { data.perRow = v; saveData(); render(); }
+}
+
+/* ── 計票 ── */
+function addVote(ci) {
+  data.rounds[data.currentRound].votes[ci] = (data.rounds[data.currentRound].votes[ci]||0)+1;
+  saveData(); render();
+}
+function subVote(e, ci) {
   e.stopPropagation();
-  if (rounds[cur].cols[i].votes > 0) { rounds[cur].cols[i].votes--; render(); }
+  const r = data.rounds[data.currentRound];
+  if (r.votes[ci]>0) { r.votes[ci]--; saveData(); render(); }
 }
-
-function addColumn() {
-  const inp = document.getElementById('newName');
-  const name = inp.value.trim() || `候選人${rounds[0].cols.length + 1}`;
-  rounds.forEach(r => r.cols.push({ name, votes: 0 }));
-  inp.value = ''; render();
+function switchRound(i) { data.currentRound=i; saveData(); render(); }
+function newRound() {
+  data.rounds.push({ votes: new Array(data.candidates.length).fill(0) });
+  data.currentRound=data.rounds.length-1; saveData(); render();
 }
-
 function resetRound() {
-  if (confirm(`確定要清空第 ${cur + 1} 輪的票數？`)) {
-    rounds[cur].cols.forEach(c => c.votes = 0);
-    render();
-  }
+  if (!confirm(`確定要清空第 ${data.currentRound+1} 輪的所有票數？`)) return;
+  data.rounds[data.currentRound].votes = new Array(data.candidates.length).fill(0);
+  saveData(); render();
+}
+function clearAllData() {
+  if (!confirm('確定要清除所有候選人與票數？此操作無法復原。')) return;
+  localStorage.removeItem(KEY); data=defaultData(); render();
 }
 
+/* ── 預設35人 ── */
+function loadDefault35() {
+  const names = [
+    '候選人01','候選人02','候選人03','候選人04','候選人05',
+    '候選人06','候選人07','候選人08','候選人09','候選人10',
+    '候選人11','候選人12','候選人13','候選人14','候選人15',
+    '候選人16','候選人17','候選人18','候選人19','候選人20',
+    '候選人21','候選人22','候選人23','候選人24','候選人25',
+    '候選人26','候選人27','候選人28','候選人29','候選人30',
+    '候選人31','候選人32','候選人33','候選人34','候選人35'
+  ];
+  data.candidates = names;
+  data.rounds = [{ votes: new Array(35).fill(0) }];
+  data.currentRound = 0;
+  saveData(); render();
+}
+
+/* ── 啟動 ── */
 render();
+if (!data.candidates.length) document.getElementById('addInput').focus();
 </script>
 </body>
 </html>
