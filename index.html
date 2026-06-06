@@ -640,7 +640,7 @@ function renderBoard() {
           <div class="col-body" onclick="requireAuth(()=>addVote(${ci}))">${svgs}</div>
           <div class="col-footer">
             <button class="btn-add-vote" onclick="requireAuth(()=>addVote(${ci}))">+1</button>
-            <button class="btn-sub-vote" onclick="requireAuth(e=>subVote(e,${ci}))">−1</button>
+            <button class="btn-sub-vote" onclick="event.stopPropagation();requireAuth(()=>subVote(${ci}))">−1</button>
           </div>
         </div>`);
     }
@@ -712,8 +712,7 @@ function addVote(ci) {
   data.rounds[data.currentRound].votes[ci] = (data.rounds[data.currentRound].votes[ci]||0)+1;
   saveData();
 }
-function subVote(e, ci) {
-  e.stopPropagation();
+function subVote(ci) {
   const r = data.rounds[data.currentRound];
   if (r.votes[ci]>0) { r.votes[ci]--; saveData(); }
 }
